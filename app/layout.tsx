@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Public_Sans } from 'next/font/google';
 import localFont from 'next/font/local';
 import { headers } from 'next/headers';
@@ -61,7 +62,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     >
       <head>
         {styles && <style>{styles}</style>}
-        <title>{pageTitle}</title>
+        <title>EMB Solar</title>
         <meta name="description" content={pageDescription} />
       </head>
       <body className="overflow-x-hidden">
@@ -79,7 +80,13 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               className="scale-100 transition-transform duration-300 hover:scale-110"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" />
+              {/* <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" /> */}
+               <img
+                style={{ height: '4em', width: '4em' }}
+                src="https://i.tracxn.com/logo/company/z4BFl0Up_400x400_cb6907d4-9f5e-4f86-b072-d19936700ef2.jpg"
+                alt="Quarkgen Logo"
+                className="block size-6"
+              />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={logoDark ?? logo}
@@ -88,15 +95,15 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               />
             </a>
             <span className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
-              Built with{' '}
-              <a
+              Built with{' '} QUARKGEN AI
+              {/* <a
                 target="_blank"
                 rel="noopener noreferrer"
                 href="https://docs.livekit.io/agents"
                 className="underline underline-offset-4"
               >
                 LiveKit Agents
-              </a>
+              </a> */}
             </span>
           </header>
 

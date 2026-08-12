@@ -62,7 +62,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     >
       <head>
         {styles && <style>{styles}</style>}
-        <title>Freyr Energy Bot</title>
+        <title>Quarkgen Energy Bot</title>
         <meta name="description" content={pageDescription} />
       </head>
       <body className="overflow-x-hidden">
@@ -82,8 +82,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {/* <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" /> */}
                <img
-                style={{ height: '3em', width: '11em' }}
-                src="https://freyrenergy.com/wp-content/uploads/2025/07/freyr-logo.png"
+                style={{ height: '3em', width: '8em' }}
+                // src="https://freyrenergy.com/wp-content/uploads/2025/07/freyr-logo.png"
+                src='/cusomer-support-bot/quarkLogo.png'
                 alt="Quarkgen Logo"
                 className="block size-6"
               />

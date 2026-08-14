@@ -1,85 +1,21 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { useSessionContext, useSessionMessages } from '@livekit/components-react';
-import type { AppConfig } from '@/app-config';
+import React, { useEffect, useRef } from 'react';
 import {
-  AgentControlBar,
-  type AgentControlBarControls,
-} from '@/components/agents-ui/agent-control-bar';
-import { ChatTranscript } from '@/components/app/chat-transcript';
-import { TileLayout } from '@/components/app/tile-layout';
+  useLocalParticipant,
+  useSessionContext,
+  useSessionMessages,
+  useVoiceAssistant,
+} from '@livekit/components-react';
+import { Mic, MicOff, PhoneOff, User, Bot, Volume2 } from 'lucide-react';
+import type { AppConfig } from '@/app-config';
+import { AgentAudioVisualizerBar } from '@/components/agents-ui/agent-audio-visualizer-bar';
+import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
+import { AgentLatestSpeech } from '@/components/app/agent-latest-speech';
+import { CustomerLatestSpeech } from '@/components/app/customer-latest-speech';
+import { AnimatedSineWave } from '@/components/app/animated-sine-wave';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
-import { Shimmer } from '../ai-elements/shimmer';
-
-const MotionBottom = motion.create('div');
-
-const MotionMessage = motion.create(Shimmer);
-
-const BOTTOM_VIEW_MOTION_PROPS = {
-  variants: {
-    visible: {
-      opacity: 1,
-      translateY: '0%',
-    },
-    hidden: {
-      opacity: 0,
-      translateY: '100%',
-    },
-  },
-  initial: 'hidden',
-  animate: 'visible',
-  exit: 'hidden',
-  transition: {
-    duration: 0.3,
-    delay: 0.5,
-    ease: 'easeOut',
-  },
-};
-
-const SHIMMER_MOTION_PROPS = {
-  variants: {
-    visible: {
-      opacity: 1,
-      transition: {
-        ease: 'easeIn',
-        duration: 0.5,
-        delay: 0.8,
-      },
-    },
-    hidden: {
-      opacity: 0,
-      transition: {
-        ease: 'easeIn',
-        duration: 0.5,
-        delay: 0,
-      },
-    },
-  },
-  initial: 'hidden',
-  animate: 'visible',
-  exit: 'hidden',
-};
-
-interface FadeProps {
-  top?: boolean;
-  bottom?: boolean;
-  className?: string;
-}
-
-export function Fade({ top = false, bottom = false, className }: FadeProps) {
-  return (
-    <div
-      className={cn(
-        'from-background pointer-events-none h-4 bg-linear-to-b to-transparent',
-        top && 'bg-linear-to-b',
-        bottom && 'bg-linear-to-t',
-        className
-      )}
-    />
-  );
-}
 
 interface SessionViewProps {
   appConfig: AppConfig;
@@ -91,70 +27,162 @@ export const SessionView = ({
 }: React.ComponentProps<'section'> & SessionViewProps) => {
   const session = useSessionContext();
   const { messages } = useSessionMessages(session);
-  const [chatOpen, setChatOpen] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { audioTrack, state: agentState } = useVoiceAssistant();
+  const { isMicrophoneEnabled, localParticipant } = useLocalParticipant();
 
-  const controls: AgentControlBarControls = {
-    leave: true,
-    microphone: true,
-    chat: appConfig.supportsChatInput,
-    camera: appConfig.supportsVideoInput,
-    screenShare: appConfig.supportsScreenShare,
-  };
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Auto scroll transcript to bottom
   useEffect(() => {
-    const lastMessage = messages.at(-1);
-    const lastMessageIsLocal = lastMessage?.from?.isLocal === true;
-
-    if (scrollAreaRef.current && lastMessageIsLocal) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
+  const toggleMic = async () => {
+    try {
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch (e) {
+      console.error('Failed to toggle mic:', e);
+    }
+  };
+
   return (
-    <section className="bg-background relative z-10 h-svh w-svw overflow-hidden" {...props}>
-      <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
-      {/* transcript */}
-      <ChatTranscript
-        hidden={!chatOpen}
-        messages={messages}
-        className="space-y-3 transition-opacity duration-300 ease-out"
-      />
-      {/* Tile layout */}
-      <TileLayout chatOpen={chatOpen} />
-      {/* Bottom */}
-      <MotionBottom
-        {...BOTTOM_VIEW_MOTION_PROPS}
-        className="fixed inset-x-3 bottom-0 z-50 md:inset-x-12"
-      >
-        {/* Pre-connect message */}
-        {appConfig.isPreConnectBufferEnabled && (
-          <AnimatePresence>
-            {messages.length === 0 && (
-              <MotionMessage
-                key="pre-connect-message"
-                duration={2}
-                aria-hidden={messages.length > 0}
-                {...SHIMMER_MOTION_PROPS}
-                className="pointer-events-none mx-auto block w-full max-w-2xl pb-4 text-center text-sm font-semibold"
-              >
-                Agent is listening, ask it a question
-              </MotionMessage>
-            )}
-          </AnimatePresence>
-        )}
-        <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
-          <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
-          <AgentControlBar
-            variant="livekit"
-            controls={controls}
-            isChatOpen={chatOpen}
-            isConnected={session.isConnected}
-            onDisconnect={session.end}
-            onIsChatOpenChange={setChatOpen}
-          />
+    <section
+      className="bg-[#f1f5f9]/70 relative z-10 flex h-full w-full flex-col items-center justify-between p-3 md:p-6 overflow-hidden"
+      {...props}
+    >
+      {/* Outer Dashboard Card Grid */}
+      <div className="relative z-10 flex h-full w-full max-w-7xl flex-col gap-4 md:flex-row md:gap-6 overflow-hidden pb-8">
+        {/* LEFT COLUMN: AGENT SIDE */}
+        <div className="flex flex-1 flex-col items-center justify-between rounded-2xl bg-white/70 p-5 shadow-2xs md:w-1/4 backdrop-blur-xs">
+          <div className="flex w-full flex-col items-center">
+            <h3 className="text-sm font-medium text-slate-500 mb-6">Agent</h3>
+
+            {/* Agent Avatar Concentric Circular Ring */}
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-2 border-slate-300/80 bg-white p-2 shadow-xs">
+              <div className="relative flex h-full w-full flex-col items-center justify-center rounded-full border border-slate-200 bg-slate-100/90 text-slate-700 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/cusomer-support-bot/agent.png"
+                  alt="Agent Avatar"
+                  className="h-full w-full object-cover rounded-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/agent.png';
+                  }}
+                />
+              </div>
+
+              {/* Speaking pulse ring */}
+              {agentState === 'speaking' && (
+                <span className="absolute -inset-1.5 rounded-full border-2 border-blue-400 animate-ping opacity-60" />
+              )}
+            </div>
+
+            {/* Latest Agent Spoken Text Box */}
+            <AgentLatestSpeech className="mt-6 w-full" />
+          </div>
         </div>
-      </MotionBottom>
+
+        {/* MIDDLE COLUMN: TRANSCRIPTION STREAM */}
+        <div className="flex flex-2 flex-col rounded-2xl bg-[#ebf0f7]/80 p-5 shadow-2xs h-full overflow-hidden border border-slate-200/60 backdrop-blur-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-dashed border-slate-300">
+            <h3 className="text-sm font-bold text-slate-800">Transcription</h3>
+            {agentState && (
+              <span className="text-xs font-semibold text-slate-600 bg-white/90 px-3 py-1 rounded-full uppercase tracking-wider font-mono shadow-2xs border border-slate-200">
+                {agentState}
+              </span>
+            )}
+          </div>
+
+          {/* Transcript Scroll Area using AgentChatTranscript */}
+          <div className="flex-1 overflow-y-auto py-2 px-1 relative">
+            {messages.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center text-center text-slate-500 text-xs p-6">
+                <Volume2 className="h-10 w-10 mb-3 text-slate-400 opacity-60 animate-pulse" />
+                <p className="font-semibold text-sm text-slate-700">
+                  Call Connected
+                </p>
+                <p className="text-slate-400 text-xs mt-1">
+                  Realtime conversation will stream here...
+                </p>
+              </div>
+            ) : (
+              <AgentChatTranscript
+                agentState={agentState}
+                messages={messages}
+                className="h-full w-full"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: CUSTOMER SIDE */}
+        <div className="flex flex-1 flex-col items-center justify-between rounded-2xl bg-white/70 p-5 shadow-2xs md:w-1/4 backdrop-blur-xs">
+          <div className="flex w-full flex-col items-center">
+            <h3 className="text-sm font-medium text-slate-500 mb-6">
+              Customer
+            </h3>
+
+            {/* Customer Avatar Circular Ring */}
+            <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-2 border-slate-300/80 bg-white p-2 shadow-xs">
+              <div className="relative flex h-full w-full items-center justify-center rounded-full border border-slate-200 bg-slate-100/90 text-slate-700 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/cusomer-support-bot/customer.png"
+                  alt="Customer Avatar"
+                  className="h-full w-full object-cover rounded-full"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/customer.png';
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Latest Customer Spoken Text Box */}
+            <CustomerLatestSpeech className="mt-6 w-full" />
+          </div>
+
+          {/* CALL CONTROLS */}
+          <div className="mt-6 flex w-full flex-col gap-2">
+            <div className="flex items-center justify-center gap-3">
+              {/* Mute / Unmute Button */}
+              <Button
+                variant={isMicrophoneEnabled ? 'outline' : 'destructive'}
+                size="lg"
+                onClick={toggleMic}
+                className="flex-1 rounded-xl gap-2 font-bold text-xs shadow-xs border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 cursor-pointer transition-transform hover:scale-105 active:scale-95"
+              >
+                {isMicrophoneEnabled ? (
+                  <>
+                    <Mic className="h-4 w-4 text-emerald-600" />
+                    <span>Mute</span>
+                  </>
+                ) : (
+                  <>
+                    <MicOff className="h-4 w-4 text-red-600" />
+                    <span>Unmute</span>
+                  </>
+                )}
+              </Button>
+
+              {/* End Call Button */}
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => session.end()}
+                className="flex-1 rounded-xl gap-2 font-bold text-xs shadow-sm bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-transform hover:scale-105 active:scale-95"
+              >
+                <PhoneOff className="h-4 w-4" />
+                <span>End Call</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Animated Moving Sine Wave Pattern */}
+      <AnimatedSineWave className="absolute bottom-0 left-0 right-0 h-12 w-full overflow-hidden pointer-events-none z-0" />
     </section>
   );
 };
